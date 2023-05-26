@@ -24,6 +24,7 @@
 
 static pcre *re_italic, *re_bold, *re_indent,
             *re_h1, *re_h2, *re_h3, *re_br, *re_pagenum;
+BOOL flag_no_indent;
 
 /*==========================================================================
   strip_cr 
@@ -166,7 +167,11 @@ while (!done)
     subs [vec[1] - vec[0] - 2] = 0;
     kmsstring_append (s, "</p>");
     kmsstring_append (s, "");
-    kmsstring_append (s, "<p>");
+    if (flag_no_indent){
+    kmsstring_append (s, "<p class=\"first-in-chapter\">"); //need class here for 1st line
+    }else{
+    kmsstring_append (s, "<p>"); 
+    }
     free (subs);
     temp = strdup (input + vec[1]);
     free (temp);
@@ -445,7 +450,7 @@ while (!done)
   // Note -- line may (in theory) be a magabyte long
 ==========================================================================*/
 static char *format_line (const char *line, BOOL indent_is_para, 
-    BOOL markdown, BOOL remove_pagenum)
+    BOOL markdown, BOOL remove_pagenum, BOOL first_line)
   {
   char *line1; 
 
@@ -476,19 +481,17 @@ static char *format_line (const char *line, BOOL indent_is_para,
     }
   free (line1);
   char *line4;
-  if (indent_is_para)
+  if (indent_is_para && !first_line)
+    {
+    // Don't process indents as para breaks if this is the first
+    //   line of the file
     line4 = text_subs_indent (md_out);
+    }
   else
     line4 = strdup (md_out); 
 
    char *line5 = strdup (line4);
-/*
-  char *line5;
-  if (TRUE)
-    line5 = text_subs_pagenum (line4);
-  else
-    line5 = strdup (line4); 
-*/
+
   free (line4);
 
   free (md_out);
@@ -516,11 +519,14 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
   if (para_indent) 
   {
     kmsstring_append (xml, "<style>\n");
-    kmsstring_append (xml, "p {\n ");
+    kmsstring_append (xml, "p {\n");
     kmsstring_append (xml, " text-indent: 1.5em;\n");
     kmsstring_append (xml, " margin-bottom: 0em;\n");
     kmsstring_append (xml, " margin-top: 0em;\n");
     kmsstring_append (xml, "}\n");
+    kmsstring_append (xml, "p.first-in-chapter {\n");
+    kmsstring_append (xml, " text-indent: 0;\n");
+    kmsstring_append (xml, "}\n"); 
     kmsstring_append (xml, "</style>\n");
   }
 ///////////
@@ -551,10 +557,11 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
           }
         if (strlen (line) <= 1)
           {
-          kmsstring_append (xml, "</p><p>\n");
+          kmsstring_append (xml, "</p>\n");
           }
         char *newline = format_line (line, indent_is_para, markdown, 
-          remove_pagenum);
+          remove_pagenum, (lines == 0));
+        if (lines == 0 && para_indent){flag_no_indent=TRUE;}else{flag_no_indent=FALSE;}
         if (first_is_title && (lines == 0))
           {
           kmsstring_append (xml, "<h1>");
@@ -563,8 +570,14 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
           }
         else
           {
-          kmsstring_append (xml, newline);
+          kmsstring_append (xml, newline);    //p.first_in_chapter class inserted here after line 0
           }
+
+        if (strlen (line) <= 1)
+          {
+          kmsstring_append (xml, "<p>\n");
+          }
+
         kmsstring_append (xml, "\n");
         if (line_paras)
           kmsstring_append (xml, "</p><p>\n");
@@ -589,5 +602,4 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
   kmsstring_destroy (xml);
   return ss; 
   }
-
 
