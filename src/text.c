@@ -24,7 +24,7 @@
 
 static pcre *re_italic, *re_bold, *re_indent,
             *re_h1, *re_h2, *re_h3, *re_br, *re_pagenum;
-BOOL flag_no_indent;
+BOOL flag_no_indent=FALSE;
 
 /*==========================================================================
   strip_cr 
@@ -561,7 +561,7 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
           }
         char *newline = format_line (line, indent_is_para, markdown, 
           remove_pagenum, (lines == 0));
-        if (lines == 0 && para_indent){flag_no_indent=TRUE;}else{flag_no_indent=FALSE;}
+        //if (lines == 0 && para_indent){flag_no_indent=TRUE;}else{flag_no_indent=FALSE;} //uncomment for no indent on first para of chapter
         if (first_is_title && (lines == 0))
           {
           kmsstring_append (xml, "<h1>");
@@ -602,4 +602,3 @@ char *text_file_to_xhtml (const char *textfile, const char *title,
   kmsstring_destroy (xml);
   return ss; 
   }
-
